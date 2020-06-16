@@ -672,7 +672,7 @@ public class ContextConfig implements LifecycleListener {
     protected void antiLocking() {
 
         if ((context instanceof StandardContext)
-            && ((StandardContext) context).getAntiResourceLocking()) {
+                && ((StandardContext) context).getAntiResourceLocking()) {
 
             Host host = (Host) context.getParent();
             String docBase = context.getDocBase();
@@ -693,14 +693,17 @@ public class ContextConfig implements LifecycleListener {
             ContextName cn = new ContextName(path, context.getWebappVersion());
             docBase = cn.getBaseName();
 
+            String tmp = System.getProperty("java.io.tmpdir");
+            File tmpFile = new File(tmp);
+            if (!tmpFile.isDirectory()) {
+                log.error(sm.getString("contextConfig.noAntiLocking", tmp, context.getName()));
+                return;
+            }
+
             if (originalDocBase.toLowerCase(Locale.ENGLISH).endsWith(".war")) {
-                antiLockingDocBase = new File(
-                        System.getProperty("java.io.tmpdir"),
-                        deploymentCount++ + "-" + docBase + ".war");
+                antiLockingDocBase = new File(tmpFile, deploymentCount++ + "-" + docBase + ".war");
             } else {
-                antiLockingDocBase = new File(
-                        System.getProperty("java.io.tmpdir"),
-                        deploymentCount++ + "-" + docBase);
+                antiLockingDocBase = new File(tmpFile, deploymentCount++ + "-" + docBase);
             }
             antiLockingDocBase = antiLockingDocBase.getAbsoluteFile();
 
@@ -794,8 +797,8 @@ public class ContextConfig implements LifecycleListener {
                 valves = pipeline.getValves();
             }
             if (valves != null) {
-                for (int i = 0; i < valves.length; i++) {
-                    log.debug("  " + valves[i].getClass().getName());
+                for (Valve valve : valves) {
+                    log.debug("  " + valve.getClass().getName());
                 }
             }
             log.debug("======================");
@@ -1026,29 +1029,29 @@ public class ContextConfig implements LifecycleListener {
 
         // Check role names used in <security-constraint> elements
         SecurityConstraint constraints[] = context.findConstraints();
-        for (int i = 0; i < constraints.length; i++) {
-            String roles[] = constraints[i].findAuthRoles();
-            for (int j = 0; j < roles.length; j++) {
-                if (!"*".equals(roles[j]) &&
-                    !context.findSecurityRole(roles[j])) {
-                    log.warn(sm.getString("contextConfig.role.auth", roles[j]));
-                    context.addSecurityRole(roles[j]);
+        for (SecurityConstraint constraint : constraints) {
+            String roles[] = constraint.findAuthRoles();
+            for (String role : roles) {
+                if (!"*".equals(role) &&
+                        !context.findSecurityRole(role)) {
+                    log.warn(sm.getString("contextConfig.role.auth", role));
+                    context.addSecurityRole(role);
                 }
             }
         }
 
         // Check role names used in <servlet> elements
         Container wrappers[] = context.findChildren();
-        for (int i = 0; i < wrappers.length; i++) {
-            Wrapper wrapper = (Wrapper) wrappers[i];
+        for (Container container : wrappers) {
+            Wrapper wrapper = (Wrapper) container;
             String runAs = wrapper.getRunAs();
             if ((runAs != null) && !context.findSecurityRole(runAs)) {
                 log.warn(sm.getString("contextConfig.role.runas", runAs));
                 context.addSecurityRole(runAs);
             }
             String names[] = wrapper.findSecurityReferences();
-            for (int j = 0; j < names.length; j++) {
-                String link = wrapper.findSecurityReference(names[j]);
+            for (String name : names) {
+                String link = wrapper.findSecurityReference(name);
                 if ((link != null) && !context.findSecurityRole(link)) {
                     log.warn(sm.getString("contextConfig.role.link", link));
                     context.addSecurityRole(link);
@@ -1183,10 +1186,7 @@ public class ContextConfig implements LifecycleListener {
         if (ok) {
             // Spec does not define an order.
             // Use ordered JARs followed by remaining JARs
-            Set<WebXml> resourceJars = new LinkedHashSet<>();
-            for (WebXml fragment : orderedFragments) {
-                resourceJars.add(fragment);
-            }
+            Set<WebXml> resourceJars = new LinkedHashSet<>(orderedFragments);
             for (WebXml fragment : fragments.values()) {
                 if (!resourceJars.contains(fragment)) {
                     resourceJars.add(fragment);
@@ -1365,19 +1365,25 @@ public class ContextConfig implements LifecycleListener {
             wrapper.setServletClass(servlet.getServletClass());
             MultipartDef multipartdef = servlet.getMultipartDef();
             if (multipartdef != null) {
-                if (multipartdef.getMaxFileSize() != null &&
-                        multipartdef.getMaxRequestSize()!= null &&
-                        multipartdef.getFileSizeThreshold() != null) {
-                    wrapper.setMultipartConfigElement(new MultipartConfigElement(
-                            multipartdef.getLocation(),
-                            Long.parseLong(multipartdef.getMaxFileSize()),
-                            Long.parseLong(multipartdef.getMaxRequestSize()),
-                            Integer.parseInt(
-                                    multipartdef.getFileSizeThreshold())));
-                } else {
-                    wrapper.setMultipartConfigElement(new MultipartConfigElement(
-                            multipartdef.getLocation()));
+                long maxFileSize = -1;
+                long maxRequestSize = -1;
+                int fileSizeThreshold = 0;
+
+                if(null != multipartdef.getMaxFileSize()) {
+                    maxFileSize = Long.parseLong(multipartdef.getMaxFileSize());
                 }
+                if(null != multipartdef.getMaxRequestSize()) {
+                    maxRequestSize = Long.parseLong(multipartdef.getMaxRequestSize());
+                }
+                if(null != multipartdef.getFileSizeThreshold()) {
+                    fileSizeThreshold = Integer.parseInt(multipartdef.getFileSizeThreshold());
+                }
+
+                wrapper.setMultipartConfigElement(new MultipartConfigElement(
+                        multipartdef.getLocation(),
+                        maxFileSize,
+                        maxRequestSize,
+                        fileSizeThreshold));
             }
             if (servlet.getAsyncSupported() != null) {
                 wrapper.setAsyncSupported(
@@ -1829,8 +1835,7 @@ public class ContextConfig implements LifecycleListener {
                     } catch (MalformedURLException e) {
                         log.error(sm.getString("contextConfig.applicationUrl"));
                     }
-                }
-                else {
+                } else {
                     stream = servletContext.getResourceAsStream
                         (Constants.ApplicationWebXml);
                     try {

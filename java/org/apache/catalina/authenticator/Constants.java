@@ -17,6 +17,7 @@
 package org.apache.catalina.authenticator;
 
 public class Constants {
+
     // Authentication methods for login configuration
     // Servlet spec schemes are defined in HttpServletRequest
     // Vendor specific schemes
@@ -35,8 +36,7 @@ public class Constants {
     public static final String DEFAULT_LOGIN_MODULE_NAME = "com.sun.security.jgss.krb5.accept";
 
     // Cookie name for single sign on support
-    public static final String SINGLE_SIGN_ON_COOKIE = System.getProperty(
-            "org.apache.catalina.authenticator.Constants.SSO_SESSION_COOKIE_NAME", "JSESSIONIDSSO");
+    public static final String SINGLE_SIGN_ON_COOKIE = "JSESSIONIDSSO";
 
 
     // --------------------------------------------------------- Request Notes

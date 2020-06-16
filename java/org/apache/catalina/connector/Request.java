@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.naming.NamingException;
 import javax.security.auth.Subject;
@@ -94,6 +95,7 @@ import org.apache.tomcat.InstanceManager;
 import org.apache.tomcat.util.ExceptionUtils;
 import org.apache.tomcat.util.buf.B2CConverter;
 import org.apache.tomcat.util.buf.ByteChunk;
+import org.apache.tomcat.util.buf.EncodedSolidusHandling;
 import org.apache.tomcat.util.buf.MessageBytes;
 import org.apache.tomcat.util.buf.StringUtils;
 import org.apache.tomcat.util.buf.UDecoder;
@@ -928,8 +930,7 @@ public class Request implements HttpServletRequest {
         }
         // Take a copy to prevent ConcurrentModificationExceptions if used to
         // remove attributes
-        Set<String> names = new HashSet<>();
-        names.addAll(attributes.keySet());
+        Set<String> names = new HashSet<>(attributes.keySet());
         return Collections.enumeration(names);
     }
 
@@ -1558,12 +1559,11 @@ public class Request implements HttpServletRequest {
                     context.getServletContext(), getRequest(), name, value);
         }
 
-        for (int i = 0; i < listeners.length; i++) {
-            if (!(listeners[i] instanceof ServletRequestAttributeListener)) {
+        for (Object o : listeners) {
+            if (!(o instanceof ServletRequestAttributeListener)) {
                 continue;
             }
-            ServletRequestAttributeListener listener =
-                    (ServletRequestAttributeListener) listeners[i];
+            ServletRequestAttributeListener listener = (ServletRequestAttributeListener) o;
             try {
                 if (replaced) {
                     listener.attributeReplaced(event);
@@ -1595,12 +1595,11 @@ public class Request implements HttpServletRequest {
         ServletRequestAttributeEvent event =
                 new ServletRequestAttributeEvent(context.getServletContext(),
                         getRequest(), name, value);
-        for (int i = 0; i < listeners.length; i++) {
-            if (!(listeners[i] instanceof ServletRequestAttributeListener)) {
+        for (Object o : listeners) {
+            if (!(o instanceof ServletRequestAttributeListener)) {
                 continue;
             }
-            ServletRequestAttributeListener listener =
-                    (ServletRequestAttributeListener) listeners[i];
+            ServletRequestAttributeListener listener = (ServletRequestAttributeListener) o;
             try {
                 listener.attributeRemoved(event);
             } catch (Throwable t) {
@@ -1976,8 +1975,7 @@ public class Request implements HttpServletRequest {
         if (!isTrailerFieldsReady()) {
             throw new IllegalStateException(sm.getString("coyoteRequest.trailersNotReady"));
         }
-        Map<String,String> result = new HashMap<>();
-        result.putAll(coyoteRequest.getTrailerFields());
+        Map<String, String> result = new HashMap<>(coyoteRequest.getTrailerFields());
         return result;
     }
 
@@ -2148,8 +2146,9 @@ public class Request implements HttpServletRequest {
         while (pos < len) {
             if (uri[pos] == '/') {
                 return pos;
-            } else if (UDecoder.ALLOW_ENCODED_SLASH && uri[pos] == '%' && pos + 2 < len &&
-                    uri[pos+1] == '2' && (uri[pos + 2] == 'f' || uri[pos + 2] == 'F')) {
+            } else if (connector.getEncodedSolidusHandlingInternal() == EncodedSolidusHandling.DECODE &&
+                    uri[pos] == '%' && pos + 2 < len && uri[pos+1] == '2' &&
+                    (uri[pos + 2] == 'f' || uri[pos + 2] == 'F')) {
                 return pos;
             }
             pos++;
@@ -2942,6 +2941,11 @@ public class Request implements HttpServletRequest {
             try {
                 session = manager.findSession(requestedSessionId);
             } catch (IOException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug(sm.getString("request.session.failed", requestedSessionId, e.getMessage()), e);
+                } else {
+                    log.info(sm.getString("request.session.failed", requestedSessionId, e.getMessage()));
+                }
                 session = null;
             }
             if ((session != null) && !session.isValid()) {
@@ -3485,6 +3489,32 @@ public class Request implements HttpServletRequest {
                         return Boolean.valueOf(
                                 request.getConnector().getProtocolHandler(
                                         ).isSendfileSupported() && request.getCoyoteRequest().getSendfile());
+                    }
+                    @Override
+                    public void set(Request request, String name, Object value) {
+                        // NO-OP
+                    }
+                });
+        specialAttributes.put(Globals.CONNECTION_ID,
+                new SpecialAttributeAdapter() {
+                    @Override
+                    public Object get(Request request, String name) {
+                        AtomicReference<Object> result = new AtomicReference<>();
+                        request.getCoyoteRequest().action(ActionCode.CONNECTION_ID, result);
+                        return result.get();
+                    }
+                    @Override
+                    public void set(Request request, String name, Object value) {
+                        // NO-OP
+                    }
+                });
+        specialAttributes.put(Globals.STREAM_ID,
+                new SpecialAttributeAdapter() {
+                    @Override
+                    public Object get(Request request, String name) {
+                        AtomicReference<Object> result = new AtomicReference<>();
+                        request.getCoyoteRequest().action(ActionCode.STREAM_ID, result);
+                        return result.get();
                     }
                     @Override
                     public void set(Request request, String name, Object value) {

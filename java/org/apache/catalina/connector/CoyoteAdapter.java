@@ -626,7 +626,7 @@ public class CoyoteAdapter implements Adapter {
             // URI decoding
             // %xx decoding of the URL
             try {
-                req.getURLDecoder().convert(decodedURI.getByteChunk(), false);
+                req.getURLDecoder().convert(decodedURI.getByteChunk(), connector.getEncodedSolidusHandlingInternal());
             } catch (IOException ioe) {
                 response.sendError(400, "Invalid URI: " + ioe.getMessage());
             }
@@ -694,7 +694,7 @@ public class CoyoteAdapter implements Adapter {
             if (request.getContext() == null) {
                 // Don't overwrite an existing error
                 if (!response.isError()) {
-                    response.sendError(404, "Not found");
+                    response.sendError(404);
                 }
                 // Allow processing to continue.
                 // If present, the error reporting valve will provide a response
@@ -818,14 +818,14 @@ public class CoyoteAdapter implements Adapter {
             if (wrapper != null) {
                 String[] methods = wrapper.getServletMethods();
                 if (methods != null) {
-                    for (int i=0; i < methods.length; i++) {
-                        if ("TRACE".equals(methods[i])) {
+                    for (String method : methods) {
+                        if ("TRACE".equals(method)) {
                             continue;
                         }
                         if (header == null) {
-                            header = methods[i];
+                            header = method;
                         } else {
-                            header += ", " + methods[i];
+                            header += ", " + method;
                         }
                     }
                 }

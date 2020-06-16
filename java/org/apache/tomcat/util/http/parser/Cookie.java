@@ -274,8 +274,9 @@ public class Cookie {
             skipResult = skipByte(bb, COMMA_BYTE);
             if (skipResult == SkipResult.FOUND) {
                 parseAttributes = false;
+            } else {
+                skipResult = skipByte(bb, SEMICOLON_BYTE);
             }
-            skipResult = skipByte(bb, SEMICOLON_BYTE);
             if (skipResult == SkipResult.EOF) {
                 parseAttributes = false;
                 moreToProcess = false;
@@ -303,8 +304,9 @@ public class Cookie {
                     skipResult = skipByte(bb, COMMA_BYTE);
                     if (skipResult == SkipResult.FOUND) {
                         parseAttributes = false;
+                    } else {
+                        skipResult = skipByte(bb, SEMICOLON_BYTE);
                     }
-                    skipResult = skipByte(bb, SEMICOLON_BYTE);
                     if (skipResult == SkipResult.EOF) {
                         parseAttributes = false;
                         moreToProcess = false;
@@ -333,8 +335,9 @@ public class Cookie {
                     skipResult = skipByte(bb, COMMA_BYTE);
                     if (skipResult == SkipResult.FOUND) {
                         parseAttributes = false;
+                    } else {
+                        skipResult = skipByte(bb, SEMICOLON_BYTE);
                     }
-                    skipResult = skipByte(bb, SEMICOLON_BYTE);
                     if (skipResult == SkipResult.EOF) {
                         parseAttributes = false;
                         moreToProcess = false;
@@ -415,12 +418,12 @@ public class Cookie {
     private static SkipResult skipBytes(ByteBuffer bb, byte[] target) {
         int mark = bb.position();
 
-        for (int i = 0; i < target.length; i++) {
+        for (byte b : target) {
             if (!bb.hasRemaining()) {
                 bb.position(mark);
                 return SkipResult.EOF;
             }
-            if (bb.get() != target[i]) {
+            if (bb.get() != b) {
                 bb.position(mark);
                 return SkipResult.NOT_FOUND;
             }

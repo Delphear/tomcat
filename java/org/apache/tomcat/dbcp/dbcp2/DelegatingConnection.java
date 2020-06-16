@@ -36,7 +36,6 @@ import java.sql.Statement;
 import java.sql.Struct;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -88,7 +87,6 @@ public class DelegatingConnection<C extends Connection> extends AbandonedTrace i
     /**
      * Returns a string representation of the metadata associated with the innermost delegate connection.
      */
-    @SuppressWarnings("resource")
     @Override
     public synchronized String toString() {
         String str = null;
@@ -139,7 +137,6 @@ public class DelegatingConnection<C extends Connection> extends AbandonedTrace i
      *            connection to compare innermost delegate with
      * @return true if innermost delegate equals <code>c</code>
      */
-    @SuppressWarnings("resource")
     public boolean innermostDelegateEquals(final Connection c) {
         final Connection innerCon = getInnermostDelegateInternal();
         if (innerCon == null) {
@@ -172,7 +169,6 @@ public class DelegatingConnection<C extends Connection> extends AbandonedTrace i
      *
      * @return innermost delegate.
      */
-    @SuppressWarnings("resource")
     public final Connection getInnermostDelegateInternal() {
         Connection conn = connection;
         while (conn != null && conn instanceof DelegatingConnection) {
@@ -623,9 +619,7 @@ public class DelegatingConnection<C extends Connection> extends AbandonedTrace i
         final List<AbandonedTrace> traces = getTrace();
         if (traces != null && !traces.isEmpty()) {
             final List<Exception> thrownList = new ArrayList<>();
-            final Iterator<AbandonedTrace> traceIter = traces.iterator();
-            while (traceIter.hasNext()) {
-                final Object trace = traceIter.next();
+            for (Object trace : traces) {
                 if (trace instanceof Statement) {
                     try {
                         ((Statement) trace).close();

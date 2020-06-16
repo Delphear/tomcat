@@ -18,6 +18,7 @@ package org.apache.catalina.core;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -140,9 +141,7 @@ public class ApplicationPushBuilder implements PushBuilder {
 
         // Cookies
         if (request.getCookies() != null) {
-            for (Cookie requestCookie : request.getCookies()) {
-                cookies.add(requestCookie);
-            }
+            cookies.addAll(Arrays.asList(request.getCookies()));
         }
         for (Cookie responseCookie : catalinaRequest.getResponse().getCookies()) {
             if (responseCookie.getMaxAge() < 0) {
@@ -439,7 +438,7 @@ public class ApplicationPushBuilder implements PushBuilder {
             // However, if passed a Cookie with just a name and value set it
             // will generate an appropriate header for the Cookie header on the
             // pushed request.
-            result.append(cookieProcessor.generateHeader(cookie));
+            result.append(cookieProcessor.generateHeader(cookie, null));
         }
         return result.toString();
     }

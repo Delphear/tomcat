@@ -554,6 +554,7 @@ public class Tomcat {
         for (Connector serviceConnector : service.findConnectors()) {
             if (connector == serviceConnector) {
                 found = true;
+                break;
             }
         }
         if (!found) {
@@ -583,6 +584,7 @@ public class Tomcat {
         for (Container engineHost : engine.findChildren()) {
             if (engineHost == host) {
                 found = true;
+                break;
             }
         }
         if (!found) {
@@ -1287,8 +1289,8 @@ public class Tomcat {
      */
     public static void main(String[] args) throws Exception {
         // Process some command line parameters
-        for (int i = 0; i < args.length; i++) {
-            if (args[i].equals("--no-jmx")) {
+        for (String arg : args) {
+            if (arg.equals("--no-jmx")) {
                 Registry.disableRegistry();
             }
         }

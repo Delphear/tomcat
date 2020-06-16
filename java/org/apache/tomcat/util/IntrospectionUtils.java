@@ -63,24 +63,24 @@ public final class IntrospectionUtils {
             Method setPropertyMethodBool = null;
 
             // First, the ideal case - a setFoo( String ) method
-            for (int i = 0; i < methods.length; i++) {
-                Class<?> paramT[] = methods[i].getParameterTypes();
-                if (setter.equals(methods[i].getName()) && paramT.length == 1
+            for (Method item : methods) {
+                Class<?> paramT[] = item.getParameterTypes();
+                if (setter.equals(item.getName()) && paramT.length == 1
                         && "java.lang.String".equals(paramT[0].getName())) {
 
-                    methods[i].invoke(o, new Object[] { value });
+                    item.invoke(o, new Object[]{value});
                     return true;
                 }
             }
 
             // Try a setFoo ( int ) or ( boolean )
-            for (int i = 0; i < methods.length; i++) {
+            for (Method method : methods) {
                 boolean ok = true;
-                if (setter.equals(methods[i].getName())
-                        && methods[i].getParameterTypes().length == 1) {
+                if (setter.equals(method.getName())
+                        && method.getParameterTypes().length == 1) {
 
                     // match - find the type and invoke it
-                    Class<?> paramType = methods[i].getParameterTypes()[0];
+                    Class<?> paramType = method.getParameterTypes()[0];
                     Object params[] = new Object[1];
 
                     // Try a setFoo ( int )
@@ -91,14 +91,14 @@ public final class IntrospectionUtils {
                         } catch (NumberFormatException ex) {
                             ok = false;
                         }
-                    // Try a setFoo ( long )
-                    }else if ("java.lang.Long".equals(paramType.getName())
-                                || "long".equals(paramType.getName())) {
-                            try {
-                                params[0] = Long.valueOf(value);
-                            } catch (NumberFormatException ex) {
-                                ok = false;
-                            }
+                        // Try a setFoo ( long )
+                    } else if ("java.lang.Long".equals(paramType.getName())
+                            || "long".equals(paramType.getName())) {
+                        try {
+                            params[0] = Long.valueOf(value);
+                        } catch (NumberFormatException ex) {
+                            ok = false;
+                        }
 
                         // Try a setFoo ( boolean )
                     } else if ("java.lang.Boolean".equals(paramType.getName())
@@ -124,17 +124,17 @@ public final class IntrospectionUtils {
                     }
 
                     if (ok) {
-                        methods[i].invoke(o, params);
+                        method.invoke(o, params);
                         return true;
                     }
                 }
 
                 // save "setProperty" for later
-                if ("setProperty".equals(methods[i].getName())) {
-                    if (methods[i].getReturnType()==Boolean.TYPE){
-                        setPropertyMethodBool = methods[i];
-                    }else {
-                        setPropertyMethodVoid = methods[i];
+                if ("setProperty".equals(method.getName())) {
+                    if (method.getReturnType() == Boolean.TYPE) {
+                        setPropertyMethodBool = method;
+                    } else {
+                        setPropertyMethodVoid = method;
                     }
 
                 }
@@ -184,17 +184,17 @@ public final class IntrospectionUtils {
             Method getPropertyMethod = null;
 
             // First, the ideal case - a getFoo() method
-            for (int i = 0; i < methods.length; i++) {
-                Class<?> paramT[] = methods[i].getParameterTypes();
-                if (getter.equals(methods[i].getName()) && paramT.length == 0) {
-                    return methods[i].invoke(o, (Object[]) null);
+            for (Method method : methods) {
+                Class<?> paramT[] = method.getParameterTypes();
+                if (getter.equals(method.getName()) && paramT.length == 0) {
+                    return method.invoke(o, (Object[]) null);
                 }
-                if (isGetter.equals(methods[i].getName()) && paramT.length == 0) {
-                    return methods[i].invoke(o, (Object[]) null);
+                if (isGetter.equals(method.getName()) && paramT.length == 0) {
+                    return method.invoke(o, (Object[]) null);
                 }
 
-                if ("getProperty".equals(methods[i].getName())) {
-                    getPropertyMethod = methods[i];
+                if ("getProperty".equals(method.getName())) {
+                    getPropertyMethod = method;
                 }
             }
 
@@ -219,12 +219,21 @@ public final class IntrospectionUtils {
     }
 
     /**
-     * Replace ${NAME} with the property value.
+     * Replaces ${NAME} in the value with the value of the property 'NAME'.
+     * Replaces ${NAME:DEFAULT} with the value of the property 'NAME:DEFAULT',
+     * if the property 'NAME:DEFAULT' is not set,
+     * the expression is replaced with the value of the property 'NAME',
+     * if the property 'NAME' is not set,
+     * the expression is replaced with 'DEFAULT'.
+     * If the property is not set and there is no default the value will be
+     * returned unmodified.
+     *
      * @param value The value
      * @param staticProp Replacement properties
      * @param dynamicProp Replacement properties
      * @param classLoader Class loader associated with the code requesting the
      *                    property
+     *
      * @return the replacement value
      */
     public static String replaceProperties(String value,
@@ -256,25 +265,21 @@ public final class IntrospectionUtils {
                     continue;
                 }
                 String n = value.substring(pos + 2, endName);
-                String v = null;
-                if (staticProp != null) {
-                    v = (String) staticProp.get(n);
-                }
-                if (v == null && dynamicProp != null) {
-                    for (PropertySource propertySource : dynamicProp) {
-                        if (propertySource instanceof SecurePropertySource) {
-                            v = ((SecurePropertySource) propertySource).getProperty(n, classLoader);
-                        } else {
-                            v = propertySource.getProperty(n);
+                String v = getProperty(n, staticProp, dynamicProp, classLoader);
+                if (v == null) {
+                    // {name:default}
+                    int col = n.indexOf(":-");
+                    if (col != -1) {
+                        String dV = n.substring(col + 2);
+                        n = n.substring(0, col);
+                        v = getProperty(n, staticProp, dynamicProp, classLoader);
+                        if (v == null) {
+                            v = dV;
                         }
-                        if (v != null) {
-                            break;
-                        }
+                    } else {
+                        v = "${" + n + "}";
                     }
                 }
-                if (v == null)
-                    v = "${" + n + "}";
-
                 sb.append(v);
                 prev = endName + 1;
             }
@@ -282,6 +287,27 @@ public final class IntrospectionUtils {
         if (prev < value.length())
             sb.append(value.substring(prev));
         return sb.toString();
+    }
+
+    private static String getProperty(String name, Hashtable<Object, Object> staticProp,
+            PropertySource[] dynamicProp, ClassLoader classLoader) {
+        String v = null;
+        if (staticProp != null) {
+            v = (String) staticProp.get(name);
+        }
+        if (v == null && dynamicProp != null) {
+            for (PropertySource propertySource : dynamicProp) {
+                if (propertySource instanceof SecurePropertySource) {
+                    v = ((SecurePropertySource) propertySource).getProperty(name, classLoader);
+                } else {
+                    v = propertySource.getProperty(name);
+                }
+                if (v != null) {
+                    break;
+                }
+            }
+        }
+        return v;
     }
 
     /**
@@ -319,11 +345,11 @@ public final class IntrospectionUtils {
     public static Method findMethod(Class<?> c, String name,
             Class<?> params[]) {
         Method methods[] = findMethods(c);
-        for (int i = 0; i < methods.length; i++) {
-            if (methods[i].getName().equals(name)) {
-                Class<?> methodParams[] = methods[i].getParameterTypes();
+        for (Method method : methods) {
+            if (method.getName().equals(name)) {
+                Class<?> methodParams[] = method.getParameterTypes();
                 if (params == null && methodParams.length == 0) {
-                    return methods[i];
+                    return method;
                 }
                 if (params.length != methodParams.length) {
                     continue;
@@ -336,7 +362,7 @@ public final class IntrospectionUtils {
                     }
                 }
                 if (found) {
-                    return methods[i];
+                    return method;
                 }
             }
         }

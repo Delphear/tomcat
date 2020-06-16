@@ -132,6 +132,13 @@ public class Catalina {
     protected boolean loaded = false;
 
 
+    /**
+     * Rethrow exceptions on init failure.
+     */
+    protected boolean throwOnInitFailure =
+            Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE");
+
+
     // ----------------------------------------------------------- Constructors
 
     public Catalina() {
@@ -159,6 +166,24 @@ public class Catalina {
 
     public boolean getUseShutdownHook() {
         return useShutdownHook;
+    }
+
+
+    /**
+     * @return <code>true</code> if an exception should be thrown if an error
+     * occurs during server init
+     */
+    public boolean getThrowOnInitFailure() {
+        return throwOnInitFailure;
+    }
+
+
+    /**
+     * Set the behavior regarding errors that could occur during server init.
+     * @param throwOnInitFailure the new flag value
+     */
+    public void setThrowOnInitFailure(boolean throwOnInitFailure) {
+        this.throwOnInitFailure = throwOnInitFailure;
     }
 
 
@@ -231,22 +256,22 @@ public class Catalina {
             return false;
         }
 
-        for (int i = 0; i < args.length; i++) {
+        for (String arg : args) {
             if (isConfig) {
-                configFile = args[i];
+                configFile = arg;
                 isConfig = false;
-            } else if (args[i].equals("-config")) {
+            } else if (arg.equals("-config")) {
                 isConfig = true;
-            } else if (args[i].equals("-nonaming")) {
+            } else if (arg.equals("-nonaming")) {
                 setUseNaming(false);
-            } else if (args[i].equals("-help")) {
+            } else if (arg.equals("-help")) {
                 usage();
                 return false;
-            } else if (args[i].equals("start")) {
+            } else if (arg.equals("start")) {
                 // NOOP
-            } else if (args[i].equals("configtest")) {
+            } else if (arg.equals("configtest")) {
                 // NOOP
-            } else if (args[i].equals("stop")) {
+            } else if (arg.equals("stop")) {
                 // NOOP
             } else {
                 usage();
@@ -546,8 +571,6 @@ public class Catalina {
 
         long t1 = System.nanoTime();
 
-        initDirs();
-
         // Before digester - it may be needed
         initNaming();
 
@@ -583,7 +606,7 @@ public class Catalina {
         try {
             getServer().init();
         } catch (LifecycleException e) {
-            if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
+            if (throwOnInitFailure) {
                 throw new java.lang.Error(e);
             } else {
                 log.error(sm.getString("catalina.initError"), e);
@@ -730,14 +753,6 @@ public class Catalina {
 
         System.out.println(sm.getString("catalina.usage"));
 
-    }
-
-
-    protected void initDirs() {
-        String temp = System.getProperty("java.io.tmpdir");
-        if (temp == null || (!(new File(temp)).isDirectory())) {
-            log.error(sm.getString("embedded.notmp", temp));
-        }
     }
 
 

@@ -41,6 +41,7 @@ import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.SessionTrackingMode;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponseWrapper;
 
@@ -733,9 +734,17 @@ public class Response implements HttpServletResponse {
             return;
         }
 
-        getCoyoteResponse().setContentTypeNoCharset(m[0]);
 
-        if (m[1] != null) {
+        if (m[1] == null) {
+            // No charset and we know value is valid as cache lookup was
+            // successful
+            // Pass-through user provided value in case user-agent is buggy and
+            // requires specific format
+            getCoyoteResponse().setContentTypeNoCharset(type);
+        } else {
+            // There is a charset so have to rebuild content-type without it
+            getCoyoteResponse().setContentTypeNoCharset(m[0]);
+
             // Ignore charset if getWriter() has already been called
             if (!usingWriter) {
                 try {
@@ -943,9 +952,9 @@ public class Response implements HttpServletResponse {
         // from the generateHeader() invocation
         if (SecurityUtil.isPackageProtectionEnabled()) {
             return AccessController.doPrivileged(
-                    new PrivilegedGenerateCookieString(getContext(), cookie));
+                    new PrivilegedGenerateCookieString(getContext(), cookie, request.getRequest()));
         } else {
-            return getContext().getCookieProcessor().generateHeader(cookie);
+            return getContext().getCookieProcessor().generateHeader(cookie, request.getRequest());
         }
     }
 
@@ -1804,15 +1813,17 @@ public class Response implements HttpServletResponse {
 
         private final Context context;
         private final Cookie cookie;
+        private final HttpServletRequest request;
 
-        public PrivilegedGenerateCookieString(Context context, Cookie cookie) {
+        public PrivilegedGenerateCookieString(Context context, Cookie cookie, HttpServletRequest request) {
             this.context = context;
             this.cookie = cookie;
+            this.request = request;
         }
 
         @Override
         public String run(){
-            return context.getCookieProcessor().generateHeader(cookie);
+            return context.getCookieProcessor().generateHeader(cookie, request);
         }
     }
 
