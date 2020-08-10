@@ -44,7 +44,100 @@
   They eventually become mixed with the numbered issues (i.e., numbered
   issues do not "pop up" wrt. others).
 -->
-<section name="Tomcat 10.0.0-M7 (markt)" rtext="in development">
+<section name="Tomcat 10.0.0-M8 (markt)" rtext="in development">
+  <subsection name="Catalina">
+    <changelog>
+      <fix>
+        <bug>64582</bug>: Pre-load the <code>CoyoteOutputStream</code> class to
+        prevent a potential exception when running under a security manager.
+        Patch provided by Johnathan Gilday. (markt)
+      </fix>
+      <fix>
+        <bug>64593</bug>: If a request is not matched to a Context, delay
+        issuing the 404 response to give the rewrite valve, if configured, an
+        opportunity to rewrite the request. (remm/markt)
+      </fix>
+      <fix>
+        Change top package name for generated emebedded classes to avoid
+        conflict with default host name on case insensitive filesystems.
+        (remm)
+      </fix>
+      <fix>
+        Add missing code generation for remaining digester rules. (remm)
+      </fix>
+      <update>
+        Add a dedicated loader for generated code to avoid dynamic class
+        loading. (remm)
+      </update>
+    </changelog>
+  </subsection>
+  <subsection name="Coyote">
+    <changelog>
+      <fix>
+        Remove deprecated <code>CookieProcessor.generateHeader</code> method.
+        (remm)
+      </fix>
+      <fix>
+        Refactor the implementation of
+        <code>ServletInputStream.available()</code> to provide a more accurate
+        return value, particularly when end of stream has been reached. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="WebSocket">
+    <changelog>
+      <fix>
+        Requests received via proxies may be marked as using the <code>ws</code>
+        or <code>wss</code> protocol rather than <code>http</code> or
+        <code>https</code>. Ensure that such requests are not rejected. PR
+        provided by Ronny Perinke. (markt)
+      </fix>
+      <fix>
+        Fix a potential issue where the write lock for a WebSocket connection
+        may not be released if an exception occurs during the write. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Web applications">
+    <changelog>
+      <fix>
+        Remove the localization of the text output of the Manager application
+        list of contexts and the Host Manager application list of hosts so that
+        the output is more consistent. PR provided by Holomark. (markt)
+      </fix>
+      <fix>
+        Clean-up / standardize the XSL files used to generate the documentation.
+        PR provided by John Bampton. (markt)
+      </fix>
+      <fix>
+        <bug>62723</bug>: Clarify the effects of some options for cluster
+        <code>channelSendOptions</code>. Patch provided by Mitch Claborn.
+        (schultz)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="Other">
+    <changelog>
+      <fix>
+        Correct a regression in the fix for <bug>64540</bug> and include
+        <code>org.apache.tomcat.util.modeler.modules</code> and
+        <code>org.apache.tomcat.util.net.jsse</code> in the list of exported
+        packages. (markt)
+      </fix>
+      <fix>
+        Remove the local copy of the <code>javax.transaction.xa</code> package
+        which is only used during compilation. The package is provided by the
+        JRE from Java 1.4 onwards so the local copy should be unnecessary.
+        (markt)
+      </fix>
+      <fix>
+        Rename the local copy of the <code>javax.xml.ws</code> package to
+        <code>jakarta.xml.ws</code>. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+</section>
+<section name="Tomcat 10.0.0-M7 (markt)" rtext="2020-07-05">
   <subsection name="Catalina">
     <changelog>
       <add>
@@ -69,6 +162,21 @@
         Add <code>application/wasm</code> to the media types recognised by
         Tomcat. Based on a PR by Thiago Henrique Hüpner. (markt)
       </add>
+      <fix>
+        Fix a bug in <code>HttpServlet</code> so that a <code>405</code>
+        response is returned for an HTTP/2 request if the mapped servlet does
+        implement the requested method rather than the more general
+        <code>400</code> response. (markt)
+      </fix>
+      <add>
+        Add generated classes using Tomcat embedded as an optional replacement
+        for the Catalina configuration files. (remm)
+      </add>
+      <fix>
+        <bug>64541</bug>: Refactor the DTD used to validate
+        <code>mbeans-descriptors.xml</code> files to avoid issues when XML
+        entity expansion is limited or disabled. (markt)
+      </fix>
     </changelog>
   </subsection>
   <subsection name="Coyote">
@@ -80,13 +188,29 @@
       </add>
       <fix>
         <bug>64509</bug>: Correctly parse RFC 2109 version 1 cookies that use a
-        comma as a separater between cookies when using the RFC 6265 cookie
+        comma as a separator between cookies when using the RFC 6265 cookie
         processor. Based on a patch by W J Carpenter. (markt)
       </fix>
       <fix>
         Fix the utility code that converted IPv6 addresses to a canonical form
         to correctly handle input addresses that ended with a pair of colons.
         Based on a patch by syarramsetty-skyhook. (markt)
+      </fix>
+      <fix>
+        Correctly parse RFC 2109 version 1 cookies that have additional linear
+        white space around cookie attribute names and values when using the RFC
+        6265 cookie processor. (markt)
+      </fix>
+      <fix>
+        Once an HTTP/2 stream has been closed, ensure that the code that cleans
+        up references that are no longer required is called. (markt)
+      </fix>
+      <fix>
+        Reduce the memory footprint of closed HTTP/2 streams. (markt)
+      </fix>
+      <fix>
+        Ensure that the HTTP/1.1 processor is correctly recycled when a direct
+        connection to h2c is made. (markt)
       </fix>
     </changelog>
   </subsection>
@@ -96,6 +220,27 @@
         Update the JSP document validation to permit <code>3.0</code> as a valid
         version attribute for the <code>&lt;jsp-root&gt;</code> element. (markt)
       </update>
+    </changelog>
+  </subsection>
+  <subsection name="Cluster">
+    <changelog>
+      <fix>
+        <bug>64560</bug>: Refactor the replication of a changed session ID for a
+        replicated session so that the list of changes associated with the
+        session is not reset when the session ID changes. (markt)
+      </fix>
+    </changelog>
+  </subsection>
+  <subsection name="WebSocket">
+    <changelog>
+      <fix>
+        <bug>64563</bug>: Add additional validation of payload length for
+        WebSocket messages. (markt)
+      </fix>
+      <fix>
+        Correct the calculation of payload length when four or more bytes are
+        required to represent the payload length. (markt)
+      </fix>
     </changelog>
   </subsection>
   <subsection name="Web Applications">
@@ -124,7 +269,7 @@
         Update the OWB module to Apache OpenWebBeans 2.0.17. (remm)
       </update>
       <fix>
-        <bug>64514</bug>: Fixes some missing class dependency issus in bootstrap
+        <bug>64514</bug>: Fixes some missing class dependency issues in bootstrap
         to address packaging/dependency concerns for JPMS and OSGi. Pull request
         provided by Raymond Augé. (markt)
       </fix>
@@ -132,6 +277,34 @@
         <bug>64521</bug>: Avoid moving i18n translations into classes dir since
         they are packaged into separate jars. Pull request provided by Raymond
         Augé. (markt)
+      </fix>
+      <fix>
+        <bug>64522</bug>: Package jars in effective dependency order. Pull
+        request provided by Raymond Augé. (markt)
+      </fix>
+      <fix>
+        Store common build details in a shared build-defaults.bnd. Pull
+        request provided by Raymond Augé. (markt)
+      </fix>
+      <fix>
+        <bug>64532</bug>: Update to bnd 5.1.1. Pull request provided by Raymond
+        Augé. (markt)
+      </fix>
+      <fix>
+        <bug>64540</bug>: Switch from bndwrap task to bnd task, begin generating
+        a better manifest and make sure the resulting jar contents are correct.
+        Pull request provided by Raymond Augé. (markt)
+      </fix>
+      <fix>
+        <bug>64544</bug>: Add built libs to the bnd classpath for introspection.
+        Pull request provided by Raymond Augé. (markt)
+      </fix>
+      <add>
+        Improve the quality and expand the coverage of the French translations
+        provided with Apache Tomcat. (remm)
+      </add>
+      <fix>
+        <bug>64548</bug>: Generate JPMS metadata. (rotty3000)
       </fix>
     </changelog>
   </subsection>
@@ -185,7 +358,7 @@
         contains an unexpected request attribute. (markt)
       </add>
       <fix>
-        <bug>64485</bug>: Fix possible resource leak geting last modified from
+        <bug>64485</bug>: Fix possible resource leak getting last modified from
         <code>ConfigurationSource.Resource</code>. (remm)
       </fix>
     </changelog>

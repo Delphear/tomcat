@@ -243,7 +243,7 @@ public class WebappLoader extends LifecycleMBeanBase implements Loader{
         String repositories[]=getLoaderRepositories();
         StringBuilder sb=new StringBuilder();
         for (String repository : repositories) {
-            sb.append(repository).append(":");
+            sb.append(repository).append(':');
         }
         return sb.toString();
     }
@@ -398,6 +398,10 @@ public class WebappLoader extends LifecycleMBeanBase implements Loader{
     private WebappClassLoaderBase createClassLoader()
         throws Exception {
 
+        if (ParallelWebappClassLoader.class.getName().equals(loaderClass)) {
+            return new ParallelWebappClassLoader(context.getParentClassLoader());
+        }
+
         Class<?> clazz = Class.forName(loaderClass);
         WebappClassLoaderBase classLoader = null;
 
@@ -548,7 +552,7 @@ public class WebappLoader extends LifecycleMBeanBase implements Loader{
 
         String contextName = context.getName();
         if (!contextName.startsWith("/")) {
-            name.append("/");
+            name.append('/');
         }
         name.append(contextName);
 
